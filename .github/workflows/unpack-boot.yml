@@ -1,0 +1,25 @@
+name: Unpack boot.img
+
+on:
+  workflow_dispatch:
+
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract boot.img.zip
+        run: |
+          mkdir -p boot
+          unzip -o boot.img.zip -d boot
+          echo "Contents:"
+          find boot -type f -print
+
+      - name: Upload boot.img
+        uses: actions/upload-artifact@v4
+        with:
+          name: boot-image
+          path: boot/
