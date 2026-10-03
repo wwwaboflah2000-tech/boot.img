@@ -1,4 +1,4 @@
-name: Extract boot.img
+name: Unpack Android Boot Image
 
 on:
   workflow_dispatch:
@@ -7,36 +7,60 @@ permissions:
   contents: write
 
 jobs:
-  extract:
+  unpack:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install 7-Zip
+      - name: Download Magisk
         run: |
-          sudo apt-get update
-          sudo apt-get install -y p7zip-full
+          wget -q https://github.com/topjohnwu/Magisk/releases/latest/download/Magisk.zip
+          mkdir -p magisk
+          unzip -q Magisk.zip -d magisk
 
-      - name: Extract boot.img
+      - name: Find magiskboot
         run: |
-          mkdir -p extracted
-          7z x boot.img.zip -oextracted
+          find magisk -type f -name "magiskboot" -o -name "libmagiskboot.so"
 
-          echo "Extracted files:"
-          find extracted -type f -ls
+      - name: Prepare magiskboot
+        run: |
+          MAGISKBOOT=$(find magisk -type f -name "magiskboot" | head -n 1)
 
-      - name: Commit boot.img to repository
+          if [ -z "$MAGISKBOOT" ]; then
+            echo "magiskboot not found"
+            exit 1
+          fi
+
+          cp "$MAGISKBOOT" ./magiskboot
+          chmod +x ./magiskboot
+
+      - name: Unpack boot.img
+        run: |
+          mkdir -p boot-unpacked
+          cd boot-unpacked
+
+          ../magiskboot unpack ../extracted/boot.img
+
+          echo "=== Boot image contents ==="
+          ls -lah
+
+      - name: Show extracted files
+        run: |
+          echo "=== Files ==="
+          find boot-unpacked -type f -printf '%p\n'
+
+      - name: Commit unpacked boot image
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add extracted/
+          git add boot-unpacked/
 
           if git diff --cached --quiet; then
             echo "Nothing to commit."
           else
-            git commit -m "Extract boot.img"
+            git commit -m "Unpack Android boot image"
             git push
           fi
