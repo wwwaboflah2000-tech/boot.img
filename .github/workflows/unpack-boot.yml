@@ -16,51 +16,23 @@ jobs:
 
       - name: Download Magisk
         run: |
-          wget -q https://github.com/topjohnwu/Magisk/releases/latest/download/Magisk.zip
-          mkdir -p magisk
-          unzip -q Magisk.zip -d magisk
+          git clone --depth 1 https://github.com/topjohnwu/Magisk.git
+          cd Magisk
+          echo "Magisk source downloaded"
 
-      - name: Find magiskboot
+      - name: Build magiskboot
         run: |
-          find magisk -type f -name "magiskboot" -o -name "libmagiskboot.so"
+          cd Magisk
 
-      - name: Prepare magiskboot
+          ./build.py binary --stub 2>/dev/null || true
+
+          find . -type f \( -name "magiskboot" -o -name "libmagiskboot.so" \) -print
+
+      - name: Locate magiskboot
         run: |
-          MAGISKBOOT=$(find magisk -type f -name "magiskboot" | head -n 1)
+          find Magisk -type f \( -name "magiskboot" -o -name "libmagiskboot.so" \) -print
 
-          if [ -z "$MAGISKBOOT" ]; then
-            echo "magiskboot not found"
-            exit 1
-          fi
-
-          cp "$MAGISKBOOT" ./magiskboot
-          chmod +x ./magiskboot
-
-      - name: Unpack boot.img
+      - name: Show boot image
         run: |
-          mkdir -p boot-unpacked
-          cd boot-unpacked
-
-          ../magiskboot unpack ../extracted/boot.img
-
-          echo "=== Boot image contents ==="
-          ls -lah
-
-      - name: Show extracted files
-        run: |
-          echo "=== Files ==="
-          find boot-unpacked -type f -printf '%p\n'
-
-      - name: Commit unpacked boot image
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git add boot-unpacked/
-
-          if git diff --cached --quiet; then
-            echo "Nothing to commit."
-          else
-            git commit -m "Unpack Android boot image"
-            git push
-          fi
+          file extracted/boot.img
+          ls -lh extracted/boot.img
