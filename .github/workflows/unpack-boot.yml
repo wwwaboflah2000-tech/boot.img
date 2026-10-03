@@ -1,7 +1,10 @@
-name: Extract boot image
+name: Extract boot.img
 
 on:
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   extract:
@@ -16,15 +19,24 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y p7zip-full
 
-      - name: Extract boot.img.zip
+      - name: Extract boot.img
         run: |
-          mkdir -p boot
-          7z x boot.img.zip -oboot
-          echo "Extracted files:"
-          find boot -type f -printf '%p\n'
+          mkdir -p extracted
+          7z x boot.img.zip -oextracted
 
-      - name: Upload extracted files
-        uses: actions/upload-artifact@v4
-        with:
-          name: boot-extracted
-          path: boot/
+          echo "Extracted files:"
+          find extracted -type f -ls
+
+      - name: Commit boot.img to repository
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add extracted/
+
+          if git diff --cached --quiet; then
+            echo "Nothing to commit."
+          else
+            git commit -m "Extract boot.img"
+            git push
+          fi
