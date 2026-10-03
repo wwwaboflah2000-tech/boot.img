@@ -1,18 +1,30 @@
-name: Inspect boot image
+name: Extract boot image
 
 on:
   workflow_dispatch:
 
 jobs:
-  inspect:
+  extract:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Check boot.img.zip
+      - name: Install 7-Zip
         run: |
-          file boot.img.zip
-          ls -lh boot.img.zip
-          xxd -l 32 boot.img.zip
+          sudo apt-get update
+          sudo apt-get install -y p7zip-full
+
+      - name: Extract boot.img.zip
+        run: |
+          mkdir -p boot
+          7z x boot.img.zip -oboot
+          echo "Extracted files:"
+          find boot -type f -printf '%p\n'
+
+      - name: Upload extracted files
+        uses: actions/upload-artifact@v4
+        with:
+          name: boot-extracted
+          path: boot/
